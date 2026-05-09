@@ -1,0 +1,13 @@
+flask
+pymongo
+psycopg2-binary
+requests
+ollama
+transformers
+torch
+torchvision
+python-dotenv
+chromadb
+pymupdf 
+datasets
+biopython
