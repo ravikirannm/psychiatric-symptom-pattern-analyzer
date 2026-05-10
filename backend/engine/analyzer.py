@@ -83,7 +83,7 @@ class SymptomAnalyzer:
            
         ]
         for turn in history_str:
-            messages.append({"role": turn['query'], "content": turn['query']})
+            messages.append({"role": 'user', "content": turn['query']})
             messages.append({"role": "assistant", "content": turn['analysis']})
         messages.append({"role": "user", "content": user_query})
         logger.info(f"Analyzing symptoms: {user_query}")
@@ -173,7 +173,7 @@ class SymptomAnalyzer:
         # 4. Pass 3: Clinical Synthesis (Structured)
         yield {"type": "progress", "message": "Synthesizing clinical assessment..."}
 
-        system_prompt_pass_3 = """
+        system_prompt_pass_3 = f"""
             You are an expert clinical diagnostic assistant.
             You will be given comprehensive medical information gathered from multiple 
             authoritative sources about a patient's symptoms.
@@ -355,7 +355,7 @@ class SymptomAnalyzer:
             {"role": "system", "content": system_prompt_summarize_shared},
         ]
         for turn in full_history:
-            messages.append({"role": turn['query'], "content": turn['query']})
+            messages.append({"role": 'user', "content": turn['query']})
             messages.append({"role": "assistant", "content": turn['analysis']})
         messages.append({"role": "user", "content": user_query})
         messages.append({"role": "assistant", "content": json.dumps(response_data, indent=1)})

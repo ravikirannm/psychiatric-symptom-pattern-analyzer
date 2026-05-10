@@ -13,6 +13,7 @@ class ConversationMemory:
     def _ensure_user(self):
         with self.db.pg.cursor() as cur:
             cur.execute("INSERT INTO users (user_id) VALUES (%s) ON CONFLICT DO NOTHING", (self.user_id,))
+            self.db.pg.commit()  
            
     def _ensure_thread(self):
         with self.db.pg.cursor() as cur:
@@ -20,6 +21,7 @@ class ConversationMemory:
                 INSERT INTO threads (thread_id, user_id, title) 
                 VALUES (%s, %s, %s) ON CONFLICT DO NOTHING
             """, (self.thread_id, self.user_id, self.title))
+            self.db.pg.commit()  
 
     def get_working_context(self):
         """Fetches shared profile + last 3 turns from MongoDB."""
@@ -55,7 +57,8 @@ class ConversationMemory:
                 VALUES (%s, %s, %s) 
                 ON CONFLICT ({id_field}, key) DO UPDATE SET value = EXCLUDED.value
             """, (id_value, key, value))
-            
+            self.db.pg.commit()
+
     def save_turn(self, query, result):
         """Saves turn to Mongo and updates PG timestamp."""
         self.db.mongo["history"].update_one(
@@ -65,6 +68,7 @@ class ConversationMemory:
         )
         with self.db.pg.cursor() as cur:
             cur.execute("UPDATE threads SET last_active = CURRENT_TIMESTAMP WHERE thread_id = %s", (self.thread_id,))
+            self.db.pg.commit()
 
     # Fetch all threads for a user
     def fetch_user_threads(self):
@@ -75,6 +79,7 @@ class ConversationMemory:
     def update_thread_title(self, new_title):
         with self.db.pg.cursor() as cur:
             cur.execute("UPDATE threads SET title = %s WHERE thread_id = %s", (new_title, self.thread_id))
+            self.db.pg.commit()
             self.title = new_title
 
     def fetch_final_analysis(self):
