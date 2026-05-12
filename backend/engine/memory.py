@@ -43,7 +43,23 @@ class ConversationMemory:
     def fetch_thread_history(self):
         """Fetches the entire conversation history from MongoDB."""
         history_doc = self.db.mongo["history"].find_one({"thread_id": self.thread_id})
-        return history_doc.get("turns", []) if history_doc else []
+        format_history = []
+        if history_doc:
+            for turn in history_doc.get("turns", []):
+                thread_obj = {
+                    "role": "user",
+                    "content": turn.get("query"),
+                    "timestamp": turn.get("ts")
+                }
+                format_history.append(thread_obj)
+                if turn.get("analysis"):
+                    thread_obj = {
+                        "role": "assistant",
+                        "content": turn.get("analysis"),
+                        "timestamp": turn.get("ts")
+                    }
+                    format_history.append(thread_obj)
+        return format_history
 
     def save_to_memory(self, key, value, shared=False):
         """Saves a key-value pair to either shared or thread memory in Postgres."""

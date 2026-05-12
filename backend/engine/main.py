@@ -58,8 +58,20 @@ def analyze_symptoms():
         for event in symptom_analyzer.analyze(user_query, user_id, thread_id):
             # Format strictly as SSE: "data: <json_string>\n\n"
             yield f"data: {json.dumps(event)}\n\n"
-    
-    return Response(stream_with_context(generate()), mimetype='text/event-stream')
+    # Add thread_id to the response headers so the frontend can correlate responses
+    response = Response(stream_with_context(generate()), mimetype='text/event-stream')
+    response.headers['X-Thread-ID'] = thread_id
+    return response
+
+@app.route('/fetch-analysis', methods=['POST'])
+def fetch_analysis():
+    data = request.get_json()
+    user_id = request.cookies.get('user_id')
+    thread_id = data.get('thread_id')
+    if not user_id or not thread_id:
+        return "Invalid request", 400
+    memory = ConversationMemory(symptom_analyzer.db_manager, user_id, thread_id)
+    return memory.fetch_final_analysis()
 
 @app.route('/reset-rag', methods=['GET'])
 def reset_rag():

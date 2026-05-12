@@ -26,7 +26,7 @@ class SymptomAnalyzer:
 
     def analyze(self, user_query,user_id, thread_id=None):
         # 1. Initialize Memory
-        yield {"type": "progress", "message": "Initializing reasoning engine..."}
+        yield {"type": "progress", "thread_id": thread_id, "message": "Initializing reasoning engine..."}
 
         memory = ConversationMemory(self.db_manager, user_id, thread_id)
         memory._ensure_thread() # Ensure thread exists in DB
@@ -37,7 +37,7 @@ class SymptomAnalyzer:
         thread_str = json.dumps(ctx['thread_memory'], indent=1)
         
         # 2. Pass 1: Clinical Reformulation
-        yield {"type": "progress", "message": "Structuring clinical presentation..."}
+        yield {"type": "progress", "thread_id": thread_id, "message": "Structuring clinical presentation..."}
 
         system_prompt = """
            You are a clinical language formatter. Your only job is to convert 
@@ -107,7 +107,7 @@ class SymptomAnalyzer:
         retrieved_docs = rag_retriever.retrieve(processed_inputs)
 
         # 3. Pass 2: Query Generation
-        yield {"type": "progress", "message": "Formulating PubMed & ICD-11 queries..."}
+        yield {"type": "progress","thread_id":thread_id, "message": "Formulating PubMed & ICD-11 queries..."}
         
 
         system_prompt_pass_2 = f"""
@@ -165,13 +165,13 @@ class SymptomAnalyzer:
         api_inputs = medical_corpus_api_input.model_dump()
         logger.info(f"Generated search queries: {api_inputs}")
 
-        yield {"type": "progress", "message": "Fetching external medical evidence..."}
+        yield {"type": "progress","thread_id":thread_id, "message": "Fetching external medical evidence..."}
         
         pubmed_results = verifier.fetch_pubmed(api_inputs.get("pubmed", {}))
         icd11_results = verifier.fetch_icd11(api_inputs.get("icd11", {}))
 
         # 4. Pass 3: Clinical Synthesis (Structured)
-        yield {"type": "progress", "message": "Synthesizing clinical assessment..."}
+        yield {"type": "progress","thread_id":thread_id, "message": "Synthesizing clinical assessment..."}
 
         system_prompt_pass_3 = f"""
             You are an expert clinical diagnostic assistant.
@@ -334,14 +334,14 @@ class SymptomAnalyzer:
             messages.append({"role": "assistant", "content": turn['analysis']})
         messages.append({"role": "user", "content": user_query})
         messages.append({"role": "assistant", "content": json.dumps(response_data, indent=1)})
+        # Create basic model response for thread summary
         summary_response = self.client.chat(
             model=OLLAMA_MODEL,
             messages=messages,
-            format={"type": "string"}, # Just return a text summary
             options={"temperature": 0.5}
         )
-        thread_summary = summary_response['message']['content']
-        memory.save_to_memory("summary", summary_response['message']['content'], shared=False)
+        thread_summary = summary_response['message']['content'].strip()
+        memory.save_to_memory("summary", thread_summary, shared=False)
         system_prompt_summarize_shared = """
             You are a summarizer for a medical symptom analysis tool.
             Your job is to read the entire shared memory context and generate a concise summary
@@ -362,10 +362,9 @@ class SymptomAnalyzer:
         shared_summary_response = self.client.chat(
             model=OLLAMA_MODEL,
             messages=messages,
-            format={"type": "string"}, # Just return a text summary
             options={"temperature": 0.5}
         )
-        shared_summary = shared_summary_response['message']['content']
+        shared_summary = shared_summary_response['message']['content'].strip()
         memory.save_to_memory("shared_summary", shared_summary, shared=True)
         memory.save_turn(user_query, response_data)
         # Update thread title based on summary
@@ -383,10 +382,9 @@ class SymptomAnalyzer:
             messages=[
                 {"role": "system", "content": title_update_prompt},
             ],
-            format={"type": "string"},
             options={"temperature": 0.5}
         )
-        new_title = title_response['message']['content']
+        new_title = title_response['message']['content'].strip()
         memory.update_thread_title(new_title)
 
     

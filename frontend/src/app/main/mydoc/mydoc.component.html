@@ -2,6 +2,9 @@
     <!-- Left: Conversation History -->
     <aside class="sidebar history">
         <div class="brand">Health.AI</div>
+        <button class="btn-new-convo" (click)="startNewConversation()">
+            <span class="icon">+</span> New Consultation
+        </button>
         <nav class="convo-list">
             <ng-container *ngFor="let thread of threads">
                 <div class="convo-item" [class.active]="thread.thread_id === selectedThread.value"
@@ -23,7 +26,7 @@
             <div class="message-area">
                 <div *ngFor="let turn of conversationHistory" class="msg"
                     [ngClass]="turn.role === 'assistant' ? 'bot' : 'user'">
-                    {{ turn.message }}
+                    <span [innerHTML]="turn.message"></span>
                 </div>
             </div>
         </ng-container>
@@ -62,7 +65,7 @@
 
     <!-- Right: Medical Intelligence -->
     <aside class="sidebar intelligence">
-        Dynamic Assessment
+        <div class="brand">Medical Intelligence</div>
         <section class="intel-block" *ngIf="symptomAnalysis">
             <h3>Clinical Assessment</h3>
             <div class="condition-item" *ngFor="let condition of symptomAnalysis.possible_conditions">
@@ -76,7 +79,7 @@
         <section class="intel-block" *ngIf="icd11Results.length > 0">
             <h3>ICD-11 Targets</h3>
             <div class="icd-badge" *ngFor="let icd of icd11Results">
-                {{ icd.code }} - {{ icd.title }}
+                {{ icd.code }} - {{ icd.description }}
             </div>
         </section>
 
@@ -85,8 +88,8 @@
             <h3>PubMed Corroboration</h3>
             <ul class="intel-links">
                 <li *ngFor="let article of pubmedResults | slice:0:3">
-                    <a [href]="'https://pubmed.ncbi.nlm.nih.gov/' + article.pmid" target="_blank">
-                        {{ article.title }}
+                    <a [href]="'https://pubmed.ncbi.nlm.nih.gov/' + article.id" target="_blank">
+                        [{{ article.pub_date }}] {{ article.title }}
                     </a>
                 </li>
             </ul>

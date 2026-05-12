@@ -9,7 +9,7 @@
     color: global.$text-main;
 
     .sidebar {
-        padding: 40px 24px;
+        padding: 0rem 2rem;
         border-right: 1px solid global.$border-color;
 
         &.intelligence {
@@ -20,7 +20,13 @@
         .brand {
             font-family: global.$font-serif;
             font-size: 1.5rem;
-            margin-bottom: 60px;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            padding-top: 1rem;
+            background: global.$bg-color;
+            position: sticky;
+            z-index: 1;
+            top: 0;
         }
 
         h3 {
@@ -29,6 +35,46 @@
             letter-spacing: 0.1em;
             margin-bottom: 16px;
             color: global.$text-muted;
+        }
+    }
+
+    // Add this inside or alongside your .sidebar rules
+    .btn-new-convo {
+        width: 100%;
+        background: global.$bg-color;
+        color: global.$text-main;
+        border: 1px solid global.$border-color;
+        padding: 14px 16px;
+        font-family: global.$font-sans;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        text-align: left;
+        cursor: pointer;
+        margin-bottom: 32px;
+        transition: all 0.3s ease;
+
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: sticky;
+        top: 4rem;
+        z-index: 1;
+
+        .icon {
+            font-size: 1.1rem;
+            font-weight: 300;
+            line-height: 1;
+        }
+
+        &:hover {
+            border-color: global.$text-main;
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        &:active {
+            transform: scale(0.99); // Subtle click feedback
         }
     }
 }
@@ -56,7 +102,8 @@
 
     .message-area {
         flex-grow: 1;
-
+        max-height: calc(100vh - 280px);
+        overflow: auto;
         .msg {
             max-width: 80%;
             margin-bottom: 24px;
@@ -114,6 +161,9 @@
             margin-bottom: 10px;
             text-decoration: underline;
             cursor: pointer;
+            a {
+                color: global.$text-main;
+            }
         }
     }
 }
@@ -175,43 +225,49 @@
 
 // Adds a subtle typing indicator/cursor effect while streaming
 .msg.live-stream {
-  border-left: 2px solid global.$text-main;
-  padding-left: 12px;
-  animation: fade-in 0.3s ease-out;
+    border-left: 2px solid global.$text-main;
+    padding-left: 12px;
+    animation: fade-in 0.3s ease-out;
+    white-space: pre-wrap;
 }
 
 // Minimalist badges for ICD codes and Likelihoods
 .condition-item {
-  margin-bottom: 24px;
-  
-  strong {
-    font-family: global.$font-serif;
-    font-size: 1.1rem;
-    display: inline-block;
-    margin-bottom: 8px;
-  }
+    margin-bottom: 24px;
+
+    strong {
+        font-family: global.$font-serif;
+        font-size: 1.1rem;
+        display: inline-block;
+        margin-bottom: 8px;
+    }
 }
 
 .badge {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 2px 6px;
-  margin-left: 8px;
-  border: 1px solid global.$border-color;
-  border-radius: 2px;
-  
-  &.likelihood {
-    color: global.$text-muted;
-  }
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 2px 6px;
+    margin-left: 8px;
+    border: 1px solid global.$border-color;
+    border-radius: 2px;
+
+    &.likelihood {
+        color: global.$text-muted;
+    }
 }
 
 .icd-badge {
-  font-family: monospace;
-  font-size: 0.8rem;
-  background: #f0f0f0;
-  padding: 4px 8px;
-  margin-bottom: 8px;
-  border-radius: 4px;
-  display: inline-block;
+    font-family: monospace;
+    font-size: 0.8rem;
+    background: #f0f0f0;
+    padding: 4px 8px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+aside {
+    max-height: 100%;
+    overflow: auto;
 }
