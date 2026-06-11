@@ -7,12 +7,12 @@ logger = logging.getLogger(__name__)
 
 # --- Configuration ---
 MONGO_URI = "mongodb://mongodb:27017/"
-PG_CONN_STR = "dbname=mydb user=user password=pass host=postgres"
+PG_CONN_STR = "dbname=pspa user=user password=pass host=postgres"
 
 class DBManager:
     def __init__(self):
         logger.info("Initializing database connections...")
-        self.mongo = MongoClient(MONGO_URI)["medical_analyzer"]
+        self.mongo = MongoClient(MONGO_URI)["pspa"]
         self.pg = psycopg2.connect(PG_CONN_STR)
         self.pg.autocommit = True
         self._init_pg_schema()

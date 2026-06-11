@@ -75,6 +75,7 @@ def fetch_analysis():
 
 @app.route('/reset-rag', methods=['GET'])
 def reset_rag():
+    rag_ingestion.ingest_pdf_folder("docs")
     rag_ingestion.ingest_medrag_corpus()
     return "RAG pipeline reset successfully!", 200
 

@@ -9,7 +9,7 @@ services:
       - ./backend:/app  # <--- Bind mount
     environment:
       - MONGO_URI=mongodb://mongodb:27017/mydb
-      - POSTGRES_URI=postgresql://user:pass@postgres:5432/mydb
+      - POSTGRES_URI=postgresql://user:pass@postgres:5432/pspa
       - OLLAMA_BASE_URL=http://host.docker.internal:11434
       - FLASK_ENV=development # Tells Flask to watch for changes
       - FLASK_DEBUG=1         # Enables auto-restart on code change
@@ -63,11 +63,11 @@ services:
     environment:
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=pass
-      - POSTGRES_DB=mydb
+      - POSTGRES_DB=pspa
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d mydb"]
+      test: ["CMD-SHELL", "pg_isready -U user -d pspa"]
       interval: 5s
       timeout: 5s
       retries: 5

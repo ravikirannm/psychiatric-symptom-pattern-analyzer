@@ -13,9 +13,16 @@ class QueryPreprocessor:
         self.clinical_ner = pipeline("ner", model="d4data/biomedical-ner-all",aggregation_strategy="simple", device=0)
 
     def dict_to_text_variations(self, data: PatientSymptom) -> list[str]:
-        """Convert structured symptom data into text variation for embedding."""
-        
-        text = f"{data['Style']} {data['ClinicalPresentation']} {data['Duration']} {data['Severity']} {data['Location']} {data['OnsetPattern']} {', '.join(data['AssociatedSymptoms'])}  {data['PatientReportedContext']}"
+        """Convert structured psychiatric symptom data into text for embedding."""
+        domain = data.get('PsychiatricDomain', data.get('Location', ''))
+        functional_impact = data.get('FunctionalImpact', '')
+        course_pattern = data.get('CoursePattern', '')
+        text = (
+            f"{data['Style']} {data['ClinicalPresentation']} {data['Duration']} "
+            f"{data['Severity']} {domain} {data['OnsetPattern']} "
+            f"{', '.join(data['AssociatedSymptoms'])} {data['PatientReportedContext']} "
+            f"{functional_impact} {course_pattern}"
+        )
         return text
 
     def get_clinical_ner_results(self, symptom_list: PatientSymptomList):
