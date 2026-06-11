@@ -1,5 +1,6 @@
 import requests
 from Bio import Entrez
+from Bio import Medline
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dotenv import load_dotenv
@@ -42,17 +43,18 @@ class MedicalQueryVerifier:
                 return []
 
             # 2. Fetch metadata for found IDs
-            handle = Entrez.esummary(db="pubmed", id=",".join(id_list))
-            summaries = Entrez.read(handle)
+            handle = Entrez.efetch(db="pubmed", id=id_list, rettype="medline", retmode="text")
+            records = list(Medline.parse(handle))
             handle.close()
 
+            # Map the Medline keys to your desired dictionary structure
             return [{
-                "id": s["Id"],
-                "title": s["Title"],
-                "source": s["Source"],
-                "pub_date": s["PubDate"]
-            } for s in summaries]
-
+                "id": r.get("PMID"),                     # PubMed ID
+                "title": r.get("TI"),                    # Title
+                "source": r.get("JT"),                   # Journal Title (or use r.get("TA") for journal abbreviation)
+                "pub_date": r.get("DP"),                 # Date of Publication
+                "abstract": r.get("AB", "No abstract available.") # Abstract text
+            } for r in records]
         except Exception as e:
             return [{"error": f"PubMed Exception: {str(e)}"}]
 

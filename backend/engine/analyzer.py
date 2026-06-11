@@ -173,26 +173,45 @@ class SymptomAnalyzer:
         # 4. Pass 3: Clinical Synthesis (Structured)
         yield {"type": "progress","thread_id":thread_id, "message": "Synthesizing clinical assessment..."}
 
-        system_prompt_pass_3 = f"""
-            You are an expert clinical diagnostic assistant.
-            You will be given comprehensive medical information gathered from multiple 
-            authoritative sources about a patient's symptoms.
 
-            Your job is to synthesize ALL inputs into a clear, evidence-based clinical assessment.
+        system_prompt_pass_3 = f"""
+            You are an expert clinical diagnostic assistant performing a structured differential diagnosis.
+            You will be given comprehensive medical information gathered from multiple authoritative sources
+            about a patient's symptoms.
+
+            Your job is to synthesize ALL inputs into a clear, evidence-based clinical assessment following
+            this strict reasoning pipeline:
+
+            STEP 1 — CONDITION IDENTIFICATION
+            Identify all plausible conditions consistent with the presented symptoms. Rank them by likelihood.
+            Use ICD-11 codes. Never give a definitive diagnosis — always qualify as "possible" or "likely".
+
+            STEP 2 — SYMPTOM GAP ANALYSIS (critical)
+            For each condition shortlisted in Step 1, retrieve its canonical symptom profile from your
+            medical knowledge. Compare that profile against the symptoms ALREADY reported by the patient.
+            Identify which hallmark or discriminating symptoms of each condition have NOT yet been confirmed
+            or denied by the patient. These gaps are what drive the follow-up questions.
+
+            STEP 3 — TARGETED FOLLOW-UP QUESTION GENERATION
+            Generate follow-up questions EXCLUSIVELY from the symptom gaps identified in Step 2.
+            Each question must:
+            - Target a specific symptom that is either (a) strongly associated with one condition,
+                helping confirm it, or (b) present in one condition but absent in another, helping
+                discriminate between them.
+            - Be phrased in plain, non-clinical language the patient can answer yes/no or describe.
+            - Not ask about symptoms the patient has already reported.
+            - Be tied explicitly to which condition(s) it helps rule in or rule out.
+
+            STEP 4 — RED FLAGS & TESTS
+            Flag specific urgent warning signs with immediate actions.
+            Recommend targeted diagnostic tests with clear rationale.
+
             ==== SHARED CONTEXT FROM OTHER CONVERSATIONS ====
             {shared_str}
             ==== WORKING MEMORY CONTEXT FROM CURRENT CONVERSATION ====
             {thread_str}
 
             Output strict JSON only. No explanation. No preamble. No markdown.
-
-            Rules:
-            - Base reasoning on retrieved documents and PubMed evidence
-            - Use ICD-11 codes for all conditions mentioned
-            - Rank conditions by likelihood given the symptoms
-            - Follow-up questions must help narrow the differential diagnosis
-            - Red flags must be specific, not generic
-            - Never give a definitive diagnosis — always say "possible" or "likely"
         """
 
         user_prompt_pass_3 = f"""
@@ -208,36 +227,47 @@ class SymptomAnalyzer:
             === ICD-11 MATCHED CONDITIONS ===
             {json.dumps(icd11_results, indent=1)}
 
-            Based on ALL sources above, generate the clinical assessment:
+            Based on ALL sources above, and following the STEP 1→4 reasoning pipeline in your instructions,
+            generate the clinical assessment in this exact structure:
+
             {{
                 "possible_conditions": [
                     {{
-                    "name": "condition name",
-                    "icd11_code": "ICD-11 code",
-                    "likelihood": "high/medium/low",
-                    "reasoning": "why this condition fits the symptoms",
-                    "supporting_evidence": "which source supports this"
+                        "name": "condition name",
+                        "icd11_code": "ICD-11 code",
+                        "likelihood": "high | medium | low",
+                        "reasoning": "why this condition fits the currently reported symptoms",
+                        "supporting_evidence": "which source(s) support this",
+                        "unconfirmed_hallmark_symptoms": [
+                            "symptom A not yet reported by patient",
+                            "symptom B not yet reported by patient"
+                        ]
                     }}
                 ],
                 "follow_up_questions": [
                     {{
-                    "question": "question to ask patient",
-                    "purpose": "what this helps rule in or out"
+                        "question": "plain-language question to ask the patient",
+                        "targets_condition": "condition name this question probes",
+                        "symptom_being_probed": "the specific clinical symptom being asked about",
+                        "rules_in_if_yes": "condition(s) this positive answer would support",
+                        "rules_out_if_no": "condition(s) this negative answer would help exclude",
+                        "discriminates_between": ["condition A", "condition B"]
                     }}
                 ],
                 "red_flags": [
                     {{
-                    "symptom": "specific warning sign",
-                    "action": "what to do immediately"
+                        "symptom": "specific warning sign",
+                        "associated_condition": "condition this flag is tied to",
+                        "action": "what to do immediately"
                     }}
                 ],
                 "recommended_tests": [
                     {{
-                    "test": "test name",
-                    "reason": "what it rules in or out"
+                        "test": "test name",
+                        "reason": "what it rules in or out",
+                        "targets_condition": "condition this test helps confirm or exclude"
                     }}
-                ],
-               
+                ]
             }}
         """
 
@@ -317,24 +347,64 @@ class SymptomAnalyzer:
         
         full_history = memory.fetch_thread_history()
         system_prompt_summarize_thread = f"""
-            You are a conversation summarizer for a medical symptom analysis tool.
-            Your job is to read the entire conversation history and generate a concise summary
-            that captures the patient's main symptoms, the clinical reasoning process, and the final assessment.
-            The summary should be in clear language for medical professionals.
-            Current memory context:
-            {thread_str if thread_str else "No current thread memory context."}
-        """    
+        You are a medical scribe. Your only job is to summarize the conversation given to you.
+
+        STRICT RULES:
+        - Only include symptoms, findings, and assessments that are EXPLICITLY stated in the conversation below.
+        - If a symptom does not appear in the patient's messages, it DOES NOT exist. Do not infer it. Do not add it.
+        - Do not draw on general medical knowledge to fill gaps. If information is absent, omit it entirely.
+        - Never invent clinical details. A fabricated summary is worse than a short one.
+
+        {f"Previous session context (for continuity only): {thread_str}" if thread_str else ""}
+        """
+
         messages = [
             {"role": "system", "content": system_prompt_summarize_thread},
         ]
+
         for turn in full_history:
             if turn['role'] == 'user':
                 messages.append({"role": "user", "content": turn['content']})
-            else:    
-                messages.append({"role": turn['role'], "content": turn['content']['query_response'] + json.dumps(turn['content']['symptom_analysis'], indent=1)})
+            else:
+                # Pass only the human-readable response, not the full JSON blob.
+                # Local models lose track of conversation content when drowning in JSON tokens.
+                assistant_summary = turn['content'].get('query_response', '')
+                analysis = turn['content'].get('symptom_analysis', {})
+                conditions = [c['name'] for c in analysis.get('possible_conditions', [])]
+                if conditions:
+                    assistant_summary += f"\n\nConditions considered: {', '.join(conditions)}"
+                messages.append({"role": "assistant", "content": assistant_summary})
+
         messages.append({"role": "user", "content": user_query})
-        messages.append({"role": "assistant", "content": json.dumps(response_data, indent=1)})
-        messages.append({"role": "system", "content": "Based on the above conversation, generate a concise summary that captures the patient's main symptoms, the clinical reasoning process, and the final assessment. The summary should be in clear language that a medical professional can quickly read to understand the case."})
+
+        # Condense response_data the same way before appending
+        condensed_response = response_data.get('query_response', '')
+        analysis = response_data.get('symptom_analysis', {})
+        conditions = [c['name'] for c in analysis.get('possible_conditions', [])]
+        red_flags = [r['symptom'] for r in analysis.get('red_flags', [])]
+        tests = [t['test'] for t in analysis.get('recommended_tests', [])]
+        if conditions:
+            condensed_response += f"\n\nConditions considered: {', '.join(conditions)}"
+        if red_flags:
+            condensed_response += f"\nRed flags identified: {', '.join(red_flags)}"
+        if tests:
+            condensed_response += f"\nTests recommended: {', '.join(tests)}"
+
+        messages.append({"role": "assistant", "content": condensed_response})
+
+        # Final instruction MUST be a user turn — Ollama ignores system role mid-conversation
+        messages.append({
+            "role": "user",
+            "content": (
+                "Using ONLY the conversation above, write a clinical summary covering:\n"
+                "1. Patient's reported symptoms (exact, as stated)\n"
+                "2. Conditions considered and their likelihood\n"
+                "3. Red flags identified\n"
+                "4. Tests recommended\n\n"
+                "Do not include any symptom or finding not explicitly present in the messages above."
+            )
+        })
+        logger.info(f"Generating thread summary with messages: {messages}")
         # Create basic model response for thread summary        
         summary_response = self.client.chat(
             model=OLLAMA_MODEL,
@@ -344,29 +414,51 @@ class SymptomAnalyzer:
         thread_summary = summary_response['message']['content'].strip()
         memory.save_to_memory("summary", thread_summary, shared=False)
         system_prompt_summarize_shared = f"""
-            You are a clinical intelligence accumulator for a multi-patient symptom analysis tool.
-            Your job is NOT to store anything about specific patients or diseases.
-            Instead, extract and preserve population-level diagnostic intelligence.
+            You are maintaining a medical reasoning reference — equivalent to a clinician's internal
+            knowledge base built up over years of practice. This is NOT a record of what happened in
+            any session. It is a structured collection of general, timeless clinical knowledge.
 
-            Current shared intelligence context:
-            {shared_str if shared_str else "None yet."}
+            Think of it as a textbook that gets smarter over time, not a log that accumulates cases.
 
-            Current session observations:
+            ==== CURRENT KNOWLEDGE BASE ====
+            {shared_str if shared_str else "Empty — begin building it."}
+
+            ==== WHAT THIS SESSION'S REASONING REVEALED ====
             {thread_str if thread_str else "None."}
 
-            Update the shared intelligence summary to capture:
-            - Symptom patterns and co-occurrences appearing repeatedly across patients
-            - Diagnostic reasoning heuristics that proved effective
-            - Red flag symptom combinations worth heightened attention
-            - Emerging epidemiological signals (without linking to any individual)
-            - Differential diagnosis patterns worth remembering
+            Your task: review what reasoning strategies, clinical rules, or medical facts were implicitly
+            used or validated this session, then update the knowledge base to capture ONLY those — stated
+            as general, reusable medical principles.
 
-            Rules:
-            - Zero patient identifiers, ages, names, or individual disease mentions
-            - Write as reusable clinical reasoning knowledge
-            - Be concise. Prioritize signal over noise.
+            WHAT BELONGS IN THE KNOWLEDGE BASE (concrete examples):
+            ✓ "Pain on eye movement is a key differentiator for optic neuritis vs other causes of
+            transient visual loss — its presence sharply increases pre-test probability."
+            ✓ "When visual symptoms co-occur with any neurological deficit, MRI brain + orbits with
+            contrast is first-line imaging regardless of symptom duration."
+            ✓ "VEP detects subclinical demyelination and is useful when clinical exam and MRI are
+            ambiguous in suspected MS workup."
+            ✓ "Morning stiffness lasting >1 hour is a discriminating feature between inflammatory
+            arthropathy and mechanical/degenerative joint disease."
 
-            Output only the updated intelligence summary. No explanation or structure.
+            WHAT DOES NOT BELONG (hard exclusions):
+            ✗ Anything phrased as "a patient presented with..." or "this case showed..."
+            ✗ Frequency claims derived from this session ("X is frequently reported") — one session
+            is not an epidemiological signal
+            ✗ Symptom descriptions copied or abstracted from the current patient's profile
+            ✗ Differential lists that mirror the current session's output
+            ✗ Any statement that only makes sense because of what happened in this specific session
+
+            REFRAME TEST — before adding any statement, ask:
+            "Would this sentence appear verbatim in a medical textbook or UpToDate article,
+            completely independent of any patient encounter?"
+            If NO → discard it.
+
+            Update the knowledge base by merging new validated principles with existing ones.
+            Deduplicate. Keep entries terse and precise — one clinical principle per sentence.
+
+            Output only the updated knowledge base as plain running text. No JSON, no headers,
+            no bullet points, no structure. Write it as a single cohesive paragraph that reads
+            like a dense clinical reference note a senior physician wrote for themselves.
         """
         messages = [
             {"role": "system", "content": system_prompt_summarize_shared},
@@ -392,6 +484,7 @@ class SymptomAnalyzer:
 
             Generate an appropriate thread title:
         """
+        logger.info(f"Generating thread title using prompt: {title_update_prompt}")
         title_response = self.client.chat(
             model=OLLAMA_MODEL,
             messages=[
@@ -400,6 +493,7 @@ class SymptomAnalyzer:
             options={"temperature": 0.5}
         )
         new_title = title_response['message']['content'].strip()
+        logger.info(f"Generated thread title: {new_title}")
         if new_title:
             logger.info(f"Updating thread title to: {new_title}")
             memory.update_thread_title(new_title)
