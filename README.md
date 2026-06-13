@@ -1,29 +1,30 @@
-# Evidence-Based Symptom Analyzer
+# Psychiatric Symptom Pattern Analyzer
 
 ## Overview
 
-**Evidence-Based Symptom Analyzer** is an intelligent medical consultation application that leverages artificial intelligence and evidence-based medical data to analyze patient symptoms and provide clinically relevant insights. The application combines natural language processing, retrieval-augmented generation (RAG), and conversational AI to deliver structured clinical analysis of medical presentations.
+**Psychiatric Symptom Pattern Analyzer** is an intelligent medical consultation application that uses artificial intelligence and evidence-based retrieval to analyze psychiatric symptom descriptions and deliver clinically relevant insights. The application combines natural language processing, retrieval-augmented generation (RAG), and conversational memory to produce structured psychiatric assessment output.
 
 ![Application Screenshot](image.png)
 
 ## Key Features
 
-- **Symptom Analysis**: Converts natural language symptom descriptions into structured clinical presentations
-- **Conversational Memory**: Maintains conversation history and context across multiple threads for personalized analysis
-- **Medical RAG Integration**: Retrieves evidence-based medical information from a curated corpus to support analysis
-- **Clinical Reasoning**: Employs multi-pass clinical reasoning to ensure comprehensive symptom coverage
-- **User Sessions**: Manages individual user sessions with persistent conversation threads
+- **Symptom Analysis**: Converts natural language psychiatric symptom descriptions into structured clinical output
+- **Conversational Memory**: Maintains conversation history and thread context for each user session
+- **Medical RAG Integration**: Retrieves evidence-based medical context from a curated vector store and external sources
+- **Clinical Reasoning**: Uses multi-stage psychiatric prompt engineering for robust synthesis
+- **User Sessions**: Tracks individual user sessions with cookies and thread persistence
+- **Streaming Responses**: Supports real-time analysis with server-sent event updates
 
 ## Application Architecture
 
 ### Frontend
-- **Framework**: Angular 21.2.0 (latest standalone components)
+- **Framework**: Angular 21.2.0
 - **Styling**: SCSS with Bootstrap 5.3.3
 - **UI Features**:
   - Interactive symptom input interface
   - Conversation thread management
   - Markdown rendering of medical analysis
-  - Security-conscious HTML sanitization
+  - Security-conscious HTML sanitization with DOMPurify
 
 ### Backend
 - **Framework**: Flask with CORS support
@@ -31,28 +32,29 @@
 - **Core Capabilities**:
   - RESTful API endpoints for symptom analysis
   - User session and cookie-based authentication
-  - Conversation thread management
-  - Real-time streaming responses
+  - Conversation thread management and persistence
+  - Real-time streaming responses via SSE
+  - FastAPI alternative available via `backend/run_fast.py`
 
 ### AI & ML Stack
-- **LLM**: Ollama with Qwen2.5:7b model for clinical reasoning
-- **NLP**: 
+- **LLM**: Ollama with `qwen2.5:7b` for psychiatric reasoning
+- **NLP**:
   - Transformers library for semantic analysis
-  - PyTorch for deep learning operations
-  - GPU acceleration support (CUDA compatible)
+  - PyTorch for model execution
+  - Clinical NER for symptom enrichment
 - **RAG System**:
   - ChromaDB for vector database and embeddings
   - Medical corpus ingestion pipeline
-  - Semantic retrieval of medical information
+  - Semantic retrieval of medical evidence
 - **Medical Data Processing**:
-  - PyMuPDF for document processing
-  - BioPython for biological sequence analysis
-  - HuggingFace datasets integration
+  - PyMuPDF for PDF processing
+  - BioPython for PubMed/Entrez integration
+  - HuggingFace datasets support
 
 ### Database & Storage
-- **Primary**: MongoDB (document-based medical records and conversation history)
-- **Secondary**: PostgreSQL (relational data with psycopg2)
-- **Vector DB**: ChromaDB (semantic embeddings for medical corpus)
+- **Primary**: MongoDB for conversation history and analysis transcripts
+- **Secondary**: PostgreSQL for user, thread, and memory metadata
+- **Vector DB**: ChromaDB for semantic embeddings and medical retrieval
 
 ## Technology Stack
 
@@ -62,15 +64,15 @@ flask              - Web framework
 pymongo            - MongoDB driver
 psycopg2-binary    - PostgreSQL driver
 requests           - HTTP client
-ollama             - LLM interaction
+ollama             - Ollama client
 transformers       - NLP models
 torch              - Deep learning framework
-torchvision        - Computer vision models
+torchvision        - Model utilities
 python-dotenv      - Environment configuration
 chromadb           - Vector database
 pymupdf            - PDF processing
 datasets           - HuggingFace datasets
-biopython          - Biological data processing
+biopython          - NCBI / PubMed integration
 flask-cors         - Cross-origin request handling
 ```
 
@@ -87,13 +89,13 @@ rxjs               - Reactive programming (v7.8.0)
 
 ### Clinical Analysis Pipeline
 
-1. **User Input**: Patient describes symptoms in natural language
-2. **Session Management**: Application identifies or creates user session with unique ID
-3. **Clinical Reformulation**: LLM converts symptom description into 5 structured clinical variations
-4. **Medical Retrieval**: RAG system retrieves relevant evidence-based medical information
-5. **Query Verification**: Validates clinical relevance of extracted medical information
-6. **Analysis Output**: Generates structured clinical analysis with supporting evidence
-7. **Memory Persistence**: Stores conversation history for context in future interactions
+1. **User Input**: Patient or clinician enters psychiatric symptoms in the Angular UI
+2. **Session Management**: Backend reads or creates a `user_id` cookie to maintain context
+3. **Clinical Reformulation**: The analyzer reforms symptom text into structured psychiatric variants
+4. **Medical Retrieval**: RAG retrieves relevant evidence from ChromaDB and external sources
+5. **Query Verification**: PubMed and ICD-11 queries validate clinical relevance
+6. **Analysis Output**: The backend synthesizes a structured psychiatric response
+7. **Memory Persistence**: Conversation history and thread memory are stored for future use
 
 ### Data Flow
 
@@ -121,109 +123,130 @@ UI Rendering & Display
 
 ```
 .
-├── backend/                    # Python Flask backend
+├── backend/                    # Python backend and AI engine
 │   ├── engine/
-│   │   ├── analyzer.py        # Main symptom analysis engine
-│   │   ├── main.py            # Flask app and routes
-│   │   ├── rag_ingestion.py   # Medical corpus ingestion
-│   │   ├── rag_retriever.py   # RAG retrieval system
-│   │   ├── verifier.py        # Query verification
-│   │   ├── memory.py          # Conversation memory management
-│   │   ├── database.py        # Database operations
-│   │   ├── data_model.py      # Data structures
-│   │   └── query_preprocess.py # Query preprocessing
-│   ├── medcpt_db/             # ChromaDB vector store
-│   ├── run.py                 # Entry point
-│   ├── constants.py           # Configuration constants
-│   ├── requirements.txt       # Python dependencies
-│   └── .env                   # Environment variables
-│
-├── frontend/                   # Angular application
+│   │   ├── analyzer.py          # Core psychiatric analysis pipeline
+│   │   ├── main.py              # Flask app and API routes
+│   │   ├── main_fastapi.py      # FastAPI alternative app
+│   │   ├── rag_ingestion.py     # Medical corpus ingestion routines
+│   │   ├── rag_retriever.py     # ChromaDB retrieval logic
+│   │   ├── verifier.py          # PubMed / ICD-11 evidence validation
+│   │   ├── memory.py            # Conversation and thread memory
+│   │   ├── database.py          # MongoDB/PostgreSQL connections and schema
+│   │   ├── data_model.py        # Data models and schema definitions
+│   │   └── query_preprocess.py  # Clinical NLP preprocessing
+│   ├── medcpt_db/               # ChromaDB persistent vector store
+│   ├── run.py                   # Flask entrypoint
+│   ├── run_fast.py              # FastAPI entrypoint
+│   ├── constants.py             # Ollama connection constants
+│   ├── requirements.txt         # Python dependencies
+│   └── Dockerfile               # Backend container build
+├── frontend/                   # Angular frontend application
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── main/          # Main component
-│   │   │   ├── services/
-│   │   │   │   └── api.service.ts  # Backend API client
-│   │   │   ├── app.routes.ts  # Application routing
-│   │   │   └── interfaces.ts  # TypeScript interfaces
-│   │   ├── main.ts            # Bootstrap file
-│   │   ├── index.html         # Root HTML
-│   │   └── styles.scss        # Global styles
-│   ├── angular.json           # Angular CLI configuration
-│   ├── package.json           # NPM dependencies
-│   └── tsconfig.json          # TypeScript configuration
-│
+│   │   │   ├── main/            # Main component
+│   │   │   ├── mydoc/           # Document/analysis view module
+│   │   │   └── services/        # API client service
+│   │   ├── index.html
+│   │   ├── main.ts
+│   │   └── styles.scss
+│   ├── angular.json
+│   ├── package.json
+│   └── tsconfig.json
 ├── docker-compose.yml         # Container orchestration
-└── README.md                  # This file
+└── README.md                  # Project documentation
 ```
 
 ## API Endpoints
 
 ### User Management
-- `GET /me` - Get or create user session with unique ID
+- `GET /me` - Get or create a `user_id` cookie
 - `GET /threads` - Retrieve all conversation threads for the user
-- `GET /thread/<thread_id>` - Get conversation history for a specific thread
+- `GET /thread/{thread_id}` - Retrieve the history for a specific thread
 
 ### Analysis
-- `POST /analyze` - Analyze symptoms (streaming response)
+- `POST /analyze` - Analyze symptoms with streaming response updates
+- `POST /fetch-analysis` - Fetch final stored analysis for a thread
+- `GET /reset-rag` - Re-ingest the medical RAG corpus
 
 ## Running the Application
 
 ### Using Docker Compose
+
 ```bash
-docker-compose up
+docker compose up --build
 ```
-This will start both the backend (port 5000) and frontend (port 4200).
+
+Open the frontend at:
+
+```text
+http://localhost:4200
+```
+
+The backend is exposed at:
+
+```text
+http://localhost:5000
+```
 
 ### Manual Setup
 
-**Backend:**
+**Backend**:
+
 ```bash
 cd backend
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python run.py
 ```
 
-**Frontend:**
+**FastAPI alternative**:
+
+```bash
+python run_fast.py
+```
+
+**Frontend**:
+
 ```bash
 cd frontend
 npm install
 npm start
 ```
 
-The application will be accessible at `http://localhost:4200`
-
 ## Configuration
 
-Create a `.env` file in the backend directory with the following variables:
+Create a `.env` file in `backend/` with values such as:
+
 ```
-OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=qwen2.5:7b
-MONGODB_URI=mongodb://localhost:27017/symptom_analyzer
-POSTGRES_URI=postgresql://user:password@localhost:5432/symptom_analyzer
+MONGO_URI=mongodb://localhost:27017/pspa
+POSTGRES_URI=postgresql://user:pass@localhost:5432/pspa
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+FLASK_ENV=development
+FLASK_DEBUG=1
+BIO_EMAIL=your.email@example.com
 ```
 
 ## Key Implementation Details
 
 ### Streaming Analysis
-The `/analyze` endpoint uses Flask's streaming capabilities to provide real-time progress updates as the LLM analyzes symptoms, creating a responsive user experience.
+The `/analyze` endpoint streams server-sent event chunks so the frontend can render progress incrementally and remain responsive.
 
 ### Conversation Memory
-The system maintains multi-level context:
-- **Thread Memory**: Conversation-specific context
-- **Shared Memory**: User-wide persistent information
-- **Session History**: Full conversation logs
+Thread metadata and user memory are stored in PostgreSQL, while full conversation turns and analysis history are persisted in MongoDB.
 
 ### RAG System
-Medical documents are ingested into ChromaDB with semantic embeddings, enabling intelligent retrieval of relevant medical information to support clinical analysis.
+The backend ingests HuggingFace MedRAG corpora and PDF content into ChromaDB, then retrieves evidence-based documents to support psychiatric reasoning.
 
 ### GPU Optimization
-The system supports CUDA-enabled GPUs for accelerated deep learning operations, automatically detected at startup.
+The ingestion and embedding pipelines support CUDA acceleration when available.
 
-## Team & Attribution
+## Notes
 
-Built with AI-assisted development using OpenAI's GPT and GitHub Copilot, integrating best practices in medical informatics and evidence-based medicine.
+- Docker Compose mounts the backend and frontend folders for live development.
+- The backend Dockerfile starts the Flask app using `python run.py`.
+- The frontend service is configured to call the backend at `http://localhost:5000`.
+- `host.docker.internal` is used to connect containers to local Ollama services.
 
----
+## Last Updated
 
-**Last Updated**: May 2026
+June 2026
